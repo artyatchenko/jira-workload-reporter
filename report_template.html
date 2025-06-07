@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jira Workload Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    h1, h2, h3 { color: #2d3e50; }
+    .summary { margin-bottom: 1em; }
+    .chart-container { width: 600px; margin-bottom: 2em; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 3em; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+    th { background: #f4f4f4; }
+    .section { margin-bottom: 3em; }
+  </style>
+</head>
+<body>
+  <h1 id="main-title"></h1>
+  <div id="report-sections"></div>
+  <script>
+    // Data will be injected here
+    const chartData = __CHART_DATA__;
+    const userName = __USER_NAME__;
+
+    // Set main title
+    document.getElementById('main-title').textContent = `Jira Workload Report of ${userName}`;
+
+    function createSection(section, idx) {
+      // Section container
+      const div = document.createElement('div');
+      div.className = 'section';
+
+      // Title
+      const h2 = document.createElement('h2');
+      h2.textContent = section.title;
+      div.appendChild(h2);
+
+      // Summary
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      summary.innerHTML = `<b>Total issues:</b> ${section.totalIssues}`;
+      div.appendChild(summary);
+
+      // Charts
+      // Monthly Volume
+      const monthlyId = `monthlyVolumeChart${idx}`;
+      const issueTypeId = `issueTypeChart${idx}`;
+      const statusId = `statusChart${idx}`;
+
+      div.innerHTML += `
+        <div class="chart-container"><canvas id="${monthlyId}"></canvas></div>
+        <div class="chart-container"><canvas id="${issueTypeId}"></canvas></div>
+        <div class="chart-container"><canvas id="${statusId}"></canvas></div>
+      `;
+
+      // Table
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Issue Key</th>
+            <th>Summary</th>
+            <th>Status</th>
+            <th>Issue Type</th>
+            <th>Created</th>
+            <th>Resolved</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${section.tableRows.map(row => `
+            <tr>
+              <td>${row.key}</td>
+              <td>${row.summary}</td>
+              <td>${row.status}</td>
+              <td>${row.issueType}</td>
+              <td>${row.created}</td>
+              <td>${row.resolved}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+      div.appendChild(table);
+
+      setTimeout(() => {
+        // Monthly Volume Chart
+        const monthlyLabels = Object.keys(section.monthlyVolume).sort();
+        const monthlyData = monthlyLabels.map(m => section.monthlyVolume[m]);
+        new Chart(document.getElementById(monthlyId), {
+          type: 'bar',
+          data: {
+            labels: monthlyLabels,
+            datasets: [{
+              label: 'Tickets Created per Month',
+              data: monthlyData,
+              backgroundColor: '#4e79a7'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { title: { display: true, text: 'Month' } }, y: { title: { display: true, text: 'Tickets' }, beginAtZero: true } }
+          }
+        });
+
+        // Issue Type Pie Chart
+        const issueTypeLabels = Object.keys(section.issueTypeCounts);
+        const issueTypeData = issueTypeLabels.map(t => section.issueTypeCounts[t]);
+        new Chart(document.getElementById(issueTypeId), {
+          type: 'pie',
+          data: {
+            labels: issueTypeLabels,
+            datasets: [{
+              label: 'Issue Types',
+              data: issueTypeData,
+              backgroundColor: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+
+        // Status Pie Chart
+        const statusLabels = Object.keys(section.statusCounts);
+        const statusData = statusLabels.map(s => section.statusCounts[s]);
+        new Chart(document.getElementById(statusId), {
+          type: 'pie',
+          data: {
+            labels: statusLabels,
+            datasets: [{
+              label: 'Statuses',
+              data: statusData,
+              backgroundColor: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+      }, 0);
+
+      return div;
+    }
+
+    // Render all sections
+    const container = document.getElementById('report-sections');
+    chartData.forEach((section, idx) => {
+      container.appendChild(createSection(section, idx));
+    });
+  </script>
+</body>
+</html>
